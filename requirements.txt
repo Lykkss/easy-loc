@@ -1,0 +1,20 @@
+annotated-types==0.7.0
+cffi @ file:///croot/cffi_1736182485317/work
+cryptography @ file:///croot/cryptography_1740577825284/work
+dnspython @ file:///croot/dnspython_1703096966733/work
+greenlet==3.2.0
+idna @ file:///croot/idna_1714398848350/work
+iniconfig==2.1.0
+packaging==24.2
+pluggy==1.5.0
+pycparser @ file:///tmp/build/80754af9/pycparser_1636541352034/work
+pydantic==2.11.3
+pydantic_core==2.33.1
+pymongo @ file:///croot/pymongo_1726070933271/work
+PyMySQL==1.1.1
+pyodbc @ file:///croot/pyodbc_1737479624928/work
+pytest==8.3.5
+python-dotenv==1.1.0
+SQLAlchemy==2.0.40
+typing-inspection==0.4.0
+typing_extensions==4.13.2

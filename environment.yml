@@ -1,0 +1,10 @@
+name: easyloc_env
+dependencies:
+  - python=3.11
+  - pip
+  - pip:
+    - pymysql
+    - pymongo
+    - sqlalchemy
+    - pydantic
+    - pytest

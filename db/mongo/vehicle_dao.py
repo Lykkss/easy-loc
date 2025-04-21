@@ -3,7 +3,7 @@ from bson import ObjectId
 
 class VehicleDAO:
     def __init__(self, connector: MongoConnector):
-        self.collection = connector.get_collection("vehicles")
+        self.collection = connector.get_collection("Vehicle")
 
     def create_vehicle(self, vehicle: dict) -> str:
         result = self.collection.insert_one(vehicle)

@@ -1,9 +1,11 @@
+# db/mongo/customer_dao.py
+
 from db.mongo.connector import MongoConnector
-from bson import ObjectId
 
 class CustomerDAO:
     def __init__(self, connector: MongoConnector):
-        self.collection = connector.get_collection("customers")
+        # on récupère bien la collection "Customer" (et non "customers")
+        self.collection = connector.get_collection("Customer")
 
     def create_customer(self, customer: dict) -> str:
         result = self.collection.insert_one(customer)

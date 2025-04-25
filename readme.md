@@ -1,232 +1,233 @@
-# Documentation de la Bibliothèque EasyLoc
+# EasyLoc Data Access Library & API
 
-Ce document présente la bibliothèque de gestion des bases de données d'EasyLoc, qui permet d'interagir avec des bases SQL (MySQL) et NoSQL (MongoDB) pour gérer contrats de location, clients et véhicules.
+La bibliothèque **EasyLoc** fournit une couche d’accès aux données pour les services de location de voitures, en combinant :
 
----
+- **MongoDB** (NoSQL) pour les entités **Customer** et **Vehicle**  
+- **MySQL** (SQL) pour les entités **Contract** et **Billing**
 
-## 1. Introduction
-
-La bibliothèque simplifie l'accès aux données des agences pour les équipes frontend et backend en proposant une API standardisée reposant sur le pattern DAO (Data Access Object).
-
----
-
-## 2. Architecture du Code
-
-L'architecture suit deux axes principaux :
-
-- **DAO (Data Access Object)** : Chaque entité possède un DAO dédié pour les opérations CRUD.
-- **Gestion des connexions** : Une classe spécifique gère la connexion aux bases MongoDB et MySQL.
+Elle expose également une API REST (FastAPI) pour consommer ces données depuis n’importe quel client (frontend, outils CLI, etc.).
 
 ---
 
-### 2.1 Connexion à MongoDB
+## Table des matières
 
-La classe `MongoConnector` permet de se connecter à une base MongoDB en utilisant un URI de connexion, avec option d'authentification.
-
-```python
-from pymongo import MongoClient
-from pymongo.errors import ConnectionFailure
-
-class MongoConnector:
-    def __init__(self, host: str = "localhost", port: int = 27017, database: str = "easyloc", username: str = None, password: str = None):
-        """Initialise la connexion MongoDB avec authentification optionnelle."""
-        if username and password:
-            uri = f"mongodb://{username}:{password}@{host}:{port}/{database}"
-            self.client = MongoClient(uri, serverSelectionTimeoutMS=5000)
-        else:
-            self.client = MongoClient(host, port, serverSelectionTimeoutMS=5000)
-        self.db = self.client[database]
-
-    def test_connection(self) -> bool:
-        """Teste la connexion à MongoDB."""
-        try:
-            self.client.admin.command("ping")
-            return True
-        except ConnectionFailure:
-            return False
-
-    def get_collection(self, name: str):
-        """Retourne la collection MongoDB spécifiée."""
-        return self.db[name]
-```
-
-**Fonctionnalités :**
-- Connexion sécurisée avec ou sans authentification.
-- Méthode pour tester la connexion.
-- Accès aux collections via `get_collection`.
+- [1. Fonctionnalités](#1-fonctionnalités)  
+- [2. Architecture du projet](#2-architecture-du-projet)  
+  - [2.1 Structure des dossiers](#21-structure-des-dossiers)  
+  - [2.2 Connexions aux bases](#22-connexions-aux-bases)  
+  - [2.3 Pattern DAO](#23-pattern-dao)  
+- [3. Installation](#3-installation)  
+- [4. Usage de l’API](#4-usage-de-lapi)  
+  - [4.1 Customers (MongoDB)](#41-customers-mongodb)  
+  - [4.2 Vehicles (MongoDB)](#42-vehicles-mongodb)  
+  - [4.3 Contracts (MySQL)](#43-contracts-mysql)  
+  - [4.4 Payments (MySQL)](#44-payments-mysql)  
+  - [4.5 Analytics (MySQL)](#45-analytics-mysql)  
+- [5. Tests](#5-tests)  
+- [6. Extensibilité & Sécurité](#6-extensibilité--sécurité) 
 
 ---
 
-### 2.2 Connexion à MySQL
+## 1. Fonctionnalités
 
-La classe `MySQLConnector` s'occupe de la connexion MySQL via le module `mysql.connector`.
-
-```python
-import mysql.connector
-
-class MySQLConnector:
-    def __init__(self, host: str, user: str, password: str, database: str):
-        """Initialise la connexion MySQL."""
-        self.connection = mysql.connector.connect(
-            host=host,
-            user=user,
-            password=password,
-            database=database
-        )
-        self.cursor = self.connection.cursor()
-
-    def test_connection(self) -> bool:
-        """Teste la connexion à MySQL."""
-        try:
-            self.cursor.execute("SELECT 1")
-            return True
-        except mysql.connector.Error:
-            return False
-
-    def get_cursor(self):
-        """Retourne le curseur pour exécuter des requêtes SQL."""
-        return self.cursor
-```
-
-**Fonctionnalités :**
-- Connexion sécurisée à MySQL.
-- Test de connexion via une requête simple.
-- Accès au curseur pour l'exécution de requêtes.
+- **CRUD** complet pour :  
+  - **Customer** (MongoDB)  
+  - **Vehicle** (MongoDB) + comptage par kilométrage  
+  - **Contract** (MySQL)  
+  - **Billing** (MySQL)  
+- **Endpoints d’analytics** pour :  
+  - Contrats par client ou véhicule  
+  - Locations actives, en retard, impayées  
+  - Statistiques de retard (moyennes, comptes)  
+- **Configuration** via `docker-compose` pour montée en environnement local (MongoDB + MySQL).  
+- **Validation** des payloads JSON grâce à **Pydantic**.  
+- **Documentation interactive** générée par **Swagger** (`/docs`).
 
 ---
 
-### 2.3 Les DAOs
+## 2. Architecture du projet
 
-Les DAO (Data Access Objects) gèrent les opérations CRUD sur les entités. Les principaux DAO sont :
+### 2.1 Structure des dossiers
 
-- **CustomerDAO** : Gère les opérations sur la collection Customer (MongoDB).
-- **VehicleDAO** : Gère les opérations sur la collection Vehicle (MongoDB).
-- **ContractDAO** : Gère les opérations sur la table Contract (MySQL).
-- **BillingDAO** : Gère les opérations sur la table Billing (MySQL).
+easy-loc/ 
+├─ db/ 
+│ 
+├─ mongo/ 
+│ 
+│ 
+├─ connector.py # MongoConnector 
+│ 
+│ 
+├─ customer_dao.py # CustomerDAO 
+│ 
+│ 
+└─ vehicle_dao.py # VehicleDAO 
+│ 
+└─ mysql/ 
+│ 
+├─ connector.py # MySQLConnector 
+│ 
+├─ models.py # SQLAlchemy Base + ORM models 
+│ 
+├─ contract_dao.py # ContractDAO 
+│ 
+├─ billing_dao.py # BillingDAO 
+│ 
+└─ analytics_dao.py # AnalyticsDAO 
+├─ docker/ 
+│ 
+└─ docker-compose.yml # MongoDB + MySQL init 
+├─ main.py # FastAPI app 
+├─ tests/ # pytest tests 
+└─ README.md
 
-#### Exemple - CustomerDAO
+### 2.2 Connexions aux bases
 
-```python
-class CustomerDAO:
-    def __init__(self, connector: MongoConnector):
-        self.collection = connector.get_collection('Customer')
+- **MongoConnector** (`pymongo`)  
+  - Authentification optionnelle  
+  - `test_connection()`, `get_collection(name)`  
+- **MySQLConnector** (`SQLAlchemy + pymysql`)  
+  - `connect()`, `get_session()`  
+  - Génère la `SessionLocal` pour les DAOs
 
-    def create_customer(self, customer: dict):
-        self.collection.insert_one(customer)
+### 2.3 Pattern DAO
 
-    def get_customer_by_uid(self, uid: str):
-        return self.collection.find_one({"uid": uid})
-```
+Chaque DAO encapsule les opérations *CRUD* et requêtes métiers :
 
-**Méthodes typiques :**
-- `create_*` : Créer une entité.
-- `get_*` : Récupérer une entité par son ID ou critère.
-- `update_*` : Mettre à jour une entité.
-- `delete_*` : Supprimer une entité.
-
----
-
-## 3. Documentation des Tests Unitaires
-
-Les tests unitaires, écrits avec pytest, vérifient le bon fonctionnement de la bibliothèque.
-
-### 3.1 Tests de Connexion
-
-- **MongoDB** : Test de connexion avec et sans authentification.
-- **MySQL** : Test de connexion via une simple requête.
-
-### 3.2 Tests des Opérations CRUD
-
-Les tests vérifient la création, la lecture, la mise à jour et la suppression des entités.  
-Par exemple :
-
-#### Exemple de test pour CustomerDAO
-
-```python
-import uuid
-
-def test_create_and_get_customer(dao):
-    uid = str(uuid.uuid4())
-    customer = {
-        "uid": uid,
-        "first_name": "Alice",
-        "second_name": "Martin",
-        "address": "1 rue des tests",
-        "permit_number": "PERM5678"
-    }
-    dao.create_customer(customer)
-    fetched = dao.get_customer_by_uid(uid)
-    assert fetched is not None
-    assert fetched["first_name"] == "Alice"
-```
+- **CustomerDAO** / **VehicleDAO** → MongoDB  
+- **ContractDAO**, **BillingDAO**, **AnalyticsDAO** → MySQL
 
 ---
 
-## 4. Choix d'Architecture
+## 3. Installation
 
-### 4.1 Gestion des Bases de Données
+1. **Cloner le repo**  
 
-- **MongoDB** est utilisé pour les données moins structurées (Customer, Vehicle).
-- **MySQL** est préféré pour les données transactionnelles et les contraintes de schéma (Contract, Billing).
-
-### 4.2 Architecture Modulaire
-
-Chaque composant (connexion ou DAO) est indépendant, facilitant ainsi l'ajout de nouveaux SGBD ou de nouvelles entités.
-
-### 4.3 Sécurité
-
-- **Validation des entrées** : Prévention des injections SQL/NoSQL.
-- **Authentification** : Mécanismes sécurisés pour les connexions aux bases de données.
-
----
-
-## 5. Installation et Utilisation
-
-### 5.1 Prérequis
-
-- Python 3.11
-- pytest pour les tests
-- Docker et docker-compose pour l'environnement des bases de données
-
-### 5.2 Installation
-
-1. Cloner le dépôt :
-   ```
    git clone https://github.com/Lykkss/easy-loc.git
    cd easy-loc
-   ```
-2. Créer et activer un environnement virtuel :
-   ```
-   conda create --name easyloc_env python=3.11
-   conda activate easyloc_env
-   ```
-3. Installer les dépendances :
-   ```
-   pip install -r requirements.txt
-   ```
-4. Démarrer les containers Docker :
-   ```
-   cd docker
-   docker-compose up --build -d
-   ```
 
-### 5.3 Lancer les Tests
+2. **Préparer l’environnement**
 
-Exécuter tous les tests avec :
-```
+conda create -n easyloc_env python=3.11 -y
+conda activate easyloc_env
+pip install -r requirements.txt
+
+3. **Monter les bases**
+
+cd docker
+docker-compose up --build -d
+
+4. **Lancer l’API**
+
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+
+## 4. Usage de l’API
+
+4.1 **Customers (MongoDB)**
+Créer
+POST /api/customers
+
+{
+  "uid": "123e4567-e89b-12d3-a456-426614174000",
+  "first_name": "Alice",
+  "second_name": "Martin",
+  "address": "1 rue des Tests, 69000 Lyon",
+  "permit_number": "PERM-ABCD-1234"
+}
+
+Lire
+GET /api/customers/{uid}
+
+4.2 Vehicles (MongoDB)
+Créer
+POST /api/vehicles
+
+Lire
+GET /api/vehicles/{uid}
+
+Mettre à jour
+PUT /api/vehicles/{uid}
+Payload JSON partiel
+
+Supprimer
+DELETE /api/vehicles/{uid}
+
+Compter par km
+GET /api/vehicles/count?km=15000&op=gt
+
+4.3 Contracts (MySQL)
+Créer
+POST /api/contracts
+
+Lire
+GET /api/contracts/{id}
+
+Mettre à jour
+PUT /api/contracts/{id}
+
+Supprimer
+DELETE /api/contracts/{id}
+
+4.4 Payments (MySQL)
+Créer
+POST /api/payments
+
+Lire
+GET /api/payments/{id}
+
+Mettre à jour
+PUT /api/payments/{id}
+
+Supprimer
+DELETE /api/payments/{id}
+
+4.5 Analytics (MySQL)
+Contrats par client :
+GET /api/analytics/contracts/customer/{uid}
+
+Locations actives :
+GET /api/analytics/contracts/active/{uid}
+
+Locations en retard :
+GET /api/analytics/contracts/late
+
+Paiements d’un contrat :
+GET /api/analytics/payments/{contract_id}
+
+Contrat entièrement payé :
+GET /api/analytics/paid/{contract_id}
+
+Locations impayées :
+GET /api/analytics/unpaid
+
+Nombre de retards :
+GET /api/analytics/count-delays?start=YYYY-MM-DD&end=YYYY-MM-DD
+
+Retard moyen par client :
+GET /api/analytics/avg-delay/customer
+
+Contrats par véhicule :
+GET /api/analytics/contracts/vehicle/{uid}
+
+Retard moyen par véhicule :
+GET /api/analytics/avg-delay/vehicle
+
+Groupement de contrats :
+GET /api/analytics/group-contracts?by=vehicle_uid
+
+## 5. Tests
+Lancer tous les tests unitaires :
+
 pytest tests/ --maxfail=1 --disable-warnings -v
-```
 
----
+MongoDB : tests/mongo/…
 
-## 6. Conclusion
+MySQL : tests/mysql/…
 
-La bibliothèque EasyLoc offre une solution complète pour gérer les bases de données via une architecture modulaire et sécurisée. Elle est facilement extensible pour intégrer de nouvelles fonctionnalités ou SGBD.
+## 6. Extensibilité & Sécurité
 
-N'hésitez pas à adapter cette documentation en fonction de vos besoins, en ajoutant des liens ou des détails spécifiques au projet.
+Nouveau SGBD : ajouter un nouveau Connector + DAO, sans impacter les autres.
 
+Validation : payloads Pydantic pour éviter injections.
 
-
-
-
-
+Logs & erreurs : centralisés via FastAPI/uvicorn.error.

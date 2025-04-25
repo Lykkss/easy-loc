@@ -192,7 +192,7 @@ Chaque composant (connexion ou DAO) est indépendant, facilitant ainsi l'ajout d
 
 1. Cloner le dépôt :
    ```
-   git clone https://github.com/username/easy-loc.git
+   git clone https://github.com/Lykkss/easy-loc.git
    cd easy-loc
    ```
 2. Créer et activer un environnement virtuel :
